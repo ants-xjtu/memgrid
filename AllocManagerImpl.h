@@ -53,7 +53,7 @@ _Frag *_GetLargerNeighbour(_Frag *frag) {
 }
 
 _UsedAndSize _GetSmallerNeighbourUAS(_Frag *frag) {
-  return *(_UsedAndSize *)((Memory)frag - sizeof(_UsedAndSize));
+  return ((_UsedAndSize *)frag)[-1];
 }
 
 _Frag *_GetSmallerNeighbour(_Frag *frag) {
