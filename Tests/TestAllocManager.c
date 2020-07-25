@@ -16,6 +16,16 @@ typedef struct {
 } TestFragStruct1;
 
 void TestFrag() {
+  _Frag frag;
+  _SetFree(&frag.pretag);
+  _SetSize(&frag.pretag, 32);
+  assert(_GetSize(frag.pretag) == 32);
+  assert(!_InUse(frag.pretag));
+  _SetInUse(&frag.pretag);
+  assert(_InUse(frag.pretag));
+}
+
+void TestNav() {
   TestFragStruct1 layout;
   _SetFree(&layout.frag1.pretag);
   _SetSize(&layout.frag1.pretag, sizeof(_UsedAndSize) + 8);
@@ -34,6 +44,7 @@ typedef void (*TestFunc)();
 
 const TestFunc TESTCASES[] = {
   TestFrag,
+  TestNav,
   NULL,
 };
 
