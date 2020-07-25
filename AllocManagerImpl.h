@@ -61,6 +61,23 @@ _Frag *_GetSmallerNeighbour(_Frag *frag) {
   return (_Frag *)((Memory)frag - offset);
 }
 
+_Frag *_InitFrag(Memory addr, Size size, int used, _Frag *prev, _Frag *next) {
+  _UsedAndSize uas;
+  _SetSize(&uas, size);
+  if (used) {
+    _SetInUse(&uas);
+  } else {
+    _SetFree(&uas);
+  }
+  _Frag *frag = (_Frag *)addr;
+  frag->pretag = uas;
+  frag->prev = prev;
+  frag->next = next;
+  _UsedAndSize *posttag = (_UsedAndSize *)((Memory)&frag->object_head + size);
+  *posttag = uas;
+  return frag;
+}
+
 typedef struct _tagMemoryImpl {
   _Frag *bins[128];
   _Frag first_frag;

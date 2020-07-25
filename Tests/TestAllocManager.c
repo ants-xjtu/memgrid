@@ -40,11 +40,34 @@ void TestNav() {
   assert(_GetLargerNeighbour(current) == &layout.frag3);
 }
 
+void TestIndexBin() {
+  unsigned int last = 0;
+  for (Size size = 8; size < 0x7fffffff; size += 8) {
+    unsigned int current = _IndexBin(size);
+    assert(current >= last);
+    last = current;
+  }
+  assert(last == 127);
+}
+
+void TestInitFrag() {
+  unsigned char mem[128];
+  _Frag *frag = _InitFrag(mem, 32, 0, NULL, NULL);
+  assert(!_InUse(frag->pretag));
+  assert(_GetSize(frag->pretag) == 32);
+  _Frag *next_frag = _GetLargerNeighbour(frag);
+  assert(_GetSmallerNeighbour(next_frag) == frag);
+  assert(!_InUse(_GetSmallerNeighbourUAS(next_frag)));
+  assert(_GetSize(_GetSmallerNeighbourUAS(next_frag)) == 32);
+}
+
 typedef void (*TestFunc)();
 
 const TestFunc TESTCASES[] = {
   TestFrag,
   TestNav,
+  TestIndexBin,
+  TestInitFrag,
   NULL,
 };
 
