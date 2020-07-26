@@ -19,3 +19,13 @@ void InitMemory(Memory memory, Size size) {
       _InitFrag((Memory)&mem->first_frag, totalAvailable, 0, NULL, NULL);
   mem->bins[_IndexBin(totalAvailable)] = frag;
 }
+
+Object AllocObject(Memory memory, Size size) {
+  _MemoryImpl *mem = (_MemoryImpl *)memory;
+  for (unsigned int index = _IndexBin(size); index < 128; index += 1) {
+    if (mem->bins[index] == NULL) {
+      continue;
+    }
+    //
+  }
+}

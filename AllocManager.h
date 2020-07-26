@@ -2,6 +2,7 @@
 #define MEMGRID_ALLOC_MANAGER_H
 
 #include <stddef.h>
+#include <string.h>
 
 typedef unsigned char *Memory;
 typedef void *Object;
@@ -17,5 +18,18 @@ Object AllocObject(Memory memory, Size size);
 
 // free an object, raise segfault when parameter is not allocated
 void FreeObject(Memory memory, Object object);
+
+// resize an object, keep it inplace if possible
+// return null if target size is too large
+Object ResizeObject(Memory memory, Object object, Size size);
+
+// helper function to fulfill spec
+static Object AllocObjectArray(Memory memory, Size count, Size size) {
+  Object object = AllocObject(memory, count * size);
+  if (object != NULL) {
+    memset(object, 0, count * size);
+  }
+  return object;
+}
 
 #endif
