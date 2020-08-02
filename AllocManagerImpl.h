@@ -10,9 +10,9 @@
 #include <stdint.h>
 
 // internal structs & helpers
-typedef uint64_t _UsedAndSize;
+typedef uint32_t _UsedAndSize;
 
-#define IN_USE_FLAG 0x8000000000000000
+#define IN_USE_FLAG 0x80000000
 
 static int _InUse(_UsedAndSize uas) { return (uas & IN_USE_FLAG) != 0; }
 
@@ -31,19 +31,17 @@ static void _SetSize(_UsedAndSize *uas, Size size) {
 #undef IN_USE_FLAG
 
 typedef struct _tagFrag {
+  // posttag for smaller neighbour
+  _UsedAndSize posttag;
   _UsedAndSize pretag;
   // previous & next fragments in the same bin
   struct _tagFrag *prev;
   struct _tagFrag *next;
-  // varlen user space according to pretag
-  // the type of object_head is meaningless
-  // choose _UsedAndSize so it take the same space with posttag
-  // which makes it easier to implement _GetLargerNeighbour
-  _UsedAndSize object_head;
-  // then posttag here
 } _Frag;
 
-static Object _GetObject(_Frag *frag) { return (Object)frag->object_head; }
+static Object _GetObject(_Frag *frag) {
+  return (Object)((Memory)frag + sizeof(_Frag));
+}
 
 // larger neighbour fragment has larger address than current one
 // use 'larger' and 'small' to distinguish with frag->prev/next
@@ -52,17 +50,13 @@ static _Frag *_GetLargerNeighbour(_Frag *frag) {
   return (_Frag *)((Memory)frag + offset);
 }
 
-static _UsedAndSize _GetSmallerNeighbourUAS(_Frag *frag) {
-  return ((_UsedAndSize *)frag)[-1];
-}
-
 static _Frag *_GetSmallerNeighbour(_Frag *frag) {
-  Size offset = sizeof(_Frag) + _GetSize(_GetSmallerNeighbourUAS(frag));
+  Size offset = sizeof(_Frag) + _GetSize(frag->posttag);
   return (_Frag *)((Memory)frag - offset);
 }
 
-static _Frag *_InitFrag(Memory addr, Size size, int used, _Frag *prev,
-                        _Frag *next) {
+static _Frag *
+_InitFrag(Memory addr, Size size, int used, _Frag *prev, _Frag *next) {
   _UsedAndSize uas;
   _SetSize(&uas, size);
   if (used) {
@@ -70,12 +64,12 @@ static _Frag *_InitFrag(Memory addr, Size size, int used, _Frag *prev,
   } else {
     _SetFree(&uas);
   }
+
   _Frag *frag = (_Frag *)addr;
   frag->pretag = uas;
+  _GetLargerNeighbour(frag)->posttag = uas;
   frag->prev = prev;
   frag->next = next;
-  _UsedAndSize *posttag = (_UsedAndSize *)((Memory)&frag->object_head + size);
-  *posttag = uas;
   return frag;
 }
 

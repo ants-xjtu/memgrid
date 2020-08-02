@@ -1,4 +1,4 @@
 {
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-    "C_Cpp.clang_format_fallbackStyle": "LLVM"
+    "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: LLVM, AlignAfterOpenBracket: AlwaysBreak }"
 }

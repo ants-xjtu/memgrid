@@ -4,17 +4,6 @@
 
 #include <assert.h>
 
-typedef struct {
-  _Frag frag1;
-  unsigned char space1[8];
-  _UsedAndSize posttag1;
-  _Frag frag2;
-  unsigned char space2[32];
-  _UsedAndSize posttag2;
-  _Frag frag3;
-  // omit
-} TestFragStruct1;
-
 void TestFrag() {
   _Frag frag;
   _SetFree(&frag.pretag);
@@ -25,16 +14,25 @@ void TestFrag() {
   assert(_InUse(frag.pretag));
 }
 
+typedef struct {
+  _Frag frag1;
+  unsigned char space1[8];
+  _Frag frag2;
+  unsigned char space2[32];
+  _Frag frag3;
+  // omit
+} TestFragStruct1;
+
 void TestNav() {
   TestFragStruct1 layout;
   _SetFree(&layout.frag1.pretag);
-  _SetSize(&layout.frag1.pretag, sizeof(_UsedAndSize) + 8);
-  _SetFree(&layout.posttag1);
-  _SetSize(&layout.posttag1, sizeof(_UsedAndSize) + 8);
+  _SetSize(&layout.frag1.pretag, 8);
+  _SetFree(&layout.frag2.posttag);
+  _SetSize(&layout.frag2.posttag, 8);
   _SetFree(&layout.frag2.pretag);
-  _SetSize(&layout.frag2.pretag, sizeof(_UsedAndSize) + 32);
-  _SetFree(&layout.posttag2);
-  _SetSize(&layout.posttag2, sizeof(_UsedAndSize) + 32);
+  _SetSize(&layout.frag2.pretag, 32);
+  _SetFree(&layout.frag3.posttag);
+  _SetSize(&layout.frag3.posttag, 32);
   _Frag *current = &layout.frag2;
   assert(_GetSmallerNeighbour(current) == &layout.frag1);
   assert(_GetLargerNeighbour(current) == &layout.frag3);
@@ -57,18 +55,14 @@ void TestInitFrag() {
   assert(_GetSize(frag->pretag) == 32);
   _Frag *next_frag = _GetLargerNeighbour(frag);
   assert(_GetSmallerNeighbour(next_frag) == frag);
-  assert(!_InUse(_GetSmallerNeighbourUAS(next_frag)));
-  assert(_GetSize(_GetSmallerNeighbourUAS(next_frag)) == 32);
+  assert(!_InUse(next_frag->posttag));
+  assert(_GetSize(next_frag->posttag) == 32);
 }
 
 typedef void (*TestFunc)();
 
 const TestFunc TESTCASES[] = {
-  TestFrag,
-  TestNav,
-  TestIndexBin,
-  TestInitFrag,
-  NULL,
+    TestFrag, TestNav, TestIndexBin, TestInitFrag, NULL,
 };
 
 int main(void) {
