@@ -14,10 +14,12 @@ void InitMemory(Memory memory, Size size) {
   for (int i = 0; i < 128; i += 1) {
     mem->bins[i] = NULL;
   }
-  Size totalAvailable = size - sizeof(_MemoryImpl);
+  Size totalAvailable = size - sizeof(_MemoryImpl) - sizeof(_Frag);
   _Frag *frag =
       _InitFrag((Memory)&mem->first_frag, totalAvailable, 0, NULL, NULL);
+  _SetInUse(&frag->posttag);
   mem->bins[_IndexBin(totalAvailable)] = frag;
+  _SetInUse(&_GetLargerNeighbour(frag)->pretag);
 }
 
 Object AllocObject(Memory memory, Size size) {
