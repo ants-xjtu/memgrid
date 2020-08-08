@@ -59,10 +59,24 @@ void TestInitFrag() {
   assert(_GetSize(next_frag->posttag) == 32);
 }
 
+void TestInitMemory() {
+  unsigned char mem[4096];
+  InitMemory(mem, sizeof(mem) / sizeof(unsigned char));
+  _MemoryImpl *memimpl = (_MemoryImpl *)mem;
+  Size totalSize = _GetSize(memimpl->first_frag.pretag);
+  assert(totalSize > 0);
+  assert(totalSize < 4096);
+  _Frag *guard = _GetLargerNeighbour(&memimpl->first_frag);
+  assert((Memory)guard < &mem[4095]);
+  for (int i = 0; i < 128; i += 1) {
+    assert((memimpl->bins[i] != NULL) == (i == _IndexBin(totalSize)));
+  }
+}
+
 typedef void (*TestFunc)();
 
 const TestFunc TESTCASES[] = {
-    TestFrag, TestNav, TestIndexBin, TestInitFrag, NULL,
+    TestFrag, TestNav, TestIndexBin, TestInitFrag, TestInitMemory, NULL,
 };
 
 int main(void) {
