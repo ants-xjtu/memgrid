@@ -28,6 +28,18 @@ Object AllocObject(Memory memory, Size size) {
     if (mem->bins[index] == NULL) {
       continue;
     }
+    _Frag *suitable = NULL;
+    for (_Frag *cursor = mem->bins[index]; cursor != NULL; cursor = cursor->next) {
+      if (_GetSize(cursor->pretag) >= size) {
+        suitable = cursor;
+        break;
+      }
+    }
+    if (suitable == NULL) {
+      continue;
+    }
+
     //
   }
+  return NULL;
 }

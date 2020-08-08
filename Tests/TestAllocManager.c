@@ -73,10 +73,22 @@ void TestInitMemory() {
   }
 }
 
+void TestSplitFrag() {
+  unsigned char mem[128];
+  _Frag *frag = _InitFrag(mem, 64, 0, NULL, NULL);
+  _Frag *next = _SplitFrag(frag, 16);
+  assert(next != NULL);
+  assert(_GetSize(frag->pretag) == 16);
+  assert(_GetSize(next->pretag) != 0);
+  assert(_GetSize(next->posttag) == 16);
+  assert(_GetLargerNeighbour(frag) == next);
+  assert(_GetSmallerNeighbour(next) == frag);
+}
+
 typedef void (*TestFunc)();
 
 const TestFunc TESTCASES[] = {
-    TestFrag, TestNav, TestIndexBin, TestInitFrag, TestInitMemory, NULL,
+    TestFrag, TestNav, TestIndexBin, TestInitFrag, TestInitMemory, TestSplitFrag, NULL,
 };
 
 int main(void) {

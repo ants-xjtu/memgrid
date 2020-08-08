@@ -73,10 +73,54 @@ _InitFrag(Memory addr, Size size, int used, _Frag *prev, _Frag *next) {
   return frag;
 }
 
+static _Frag *_SplitFrag(_Frag *frag, Size pos) {
+  assert(!_InUse(frag->pretag));
+  assert(_GetSize(frag->pretag) > pos);
+  // split into a smaller fragment and 0-sized fragment is meaningless
+  if (_GetSize(frag->pretag) <= pos + sizeof(_Frag)) {
+    return NULL;
+  }
+  Size nextSize = _GetSize(frag->pretag) - pos;
+
+  _SetSize(&frag->pretag, pos);
+  _Frag *next = _GetLargerNeighbour(frag);
+  _UsedAndSize nextUAS;
+  _SetFree(&nextUAS);
+  _SetSize(&nextUAS, nextSize);
+  next->pretag = nextUAS;
+  next->posttag = frag->pretag;
+  return next;
+}
+
 typedef struct _tagMemoryImpl {
   _Frag *bins[128];
+  _Frag *last;
+  uint8_t binLeft, binRight;
   _Frag first_frag;
 } _MemoryImpl;
+
+static unsigned int _IndexBin(Size size);
+
+static void _RemoveFrag(_Frag *frag, _MemoryImpl *mem) {
+  if (frag->prev == NULL) {
+    assert(_IndexBin(_GetSize(frag->pretag)) == mem->binLeft);
+    assert(frag->next != NULL);
+    frag->next->prev = NULL;
+    mem->binLeft = _IndexBin(_GetSize(frag->next->pretag));
+  } else {
+    frag->next->prev = frag->prev;
+  }
+  if (frag->next == NULL) {
+    assert(frag == mem->last);
+    assert(_IndexBin(_GetSize(frag->pretag)) + 1 == mem->binRight);
+    assert(frag->prev != NULL);
+    frag->prev->next = NULL;
+    mem->binRight = _IndexBin(_GetSize(frag->prev->pretag));
+    mem->last = frag->prev;
+  } else {
+    frag->prev->next = frag->next;
+  }
+}
 
 // *** COPY START ***
 // https://github.com/ennorehling/dlmalloc/blob/master/malloc.c#L2139
@@ -148,13 +192,5 @@ static int largebin_index(unsigned int sz) {
 // *** COPY END ***
 
 static unsigned int _IndexBin(Size fragSize) { return bin_index(fragSize); }
-
-static _Frag *_FindBin(Memory memory, Size minSize) {
-  unsigned int index = _IndexBin(minSize);
-  _MemoryImpl *mem = (_MemoryImpl *)memory;
-  for (; mem->bins[index] == NULL && index < 128; index += 1) {
-  }
-  return index == 128 ? NULL : mem->bins[index];
-}
 
 #endif
