@@ -92,6 +92,25 @@ static _Frag *_SplitFrag(_Frag *frag, Size pos) {
   return next;
 }
 
+static _Frag *_MergeFrag(_Frag *frag) {
+  assert(!_InUse(frag->pretag));
+  Size sum = _GetSize(frag->pretag);
+  _Frag *start = frag;
+  while (!_InUse(start->posttag)) {
+    start = _GetSmallerNeighbour(start);
+    sum += _GetSize(start->pretag) + sizeof(_Frag);
+  }
+  _SetSize(&start->pretag, sum);
+  while (!_InUse(_GetLargerNeighbour(start)->pretag)) {
+    _SetSize(
+        &start->pretag, _GetSize(start->pretag) +
+                            _GetSize(_GetLargerNeighbour(start)->pretag) +
+                            sizeof(_Frag));
+  }
+  _GetLargerNeighbour(start)->posttag = start->pretag;
+  return start;
+}
+
 typedef struct _tagMemoryImpl {
   _Frag *bins[128];
   _Frag *last;

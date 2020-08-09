@@ -29,7 +29,8 @@ Object AllocObject(Memory memory, Size size) {
       continue;
     }
     _Frag *suitable = NULL;
-    for (_Frag *cursor = mem->bins[index]; cursor != NULL; cursor = cursor->next) {
+    for (_Frag *cursor = mem->bins[index]; cursor != NULL;
+         cursor = cursor->next) {
       if (_GetSize(cursor->pretag) >= size) {
         suitable = cursor;
         break;

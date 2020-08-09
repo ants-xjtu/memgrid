@@ -85,10 +85,21 @@ void TestSplitFrag() {
   assert(_GetSmallerNeighbour(next) == frag);
 }
 
+void TestMergeFrag() {
+  unsigned char mem[128];
+  _Frag *frag1 = _InitFrag(mem, 96, 0, NULL, NULL);
+  _Frag *frag2 = _SplitFrag(frag1, 16);
+  _Frag *frag3 = _SplitFrag(frag2, 16);
+  _Frag *merged = _MergeFrag(frag2);
+  assert(merged == frag1);
+  assert(_GetSize(merged->pretag));
+}
+
 typedef void (*TestFunc)();
 
 const TestFunc TESTCASES[] = {
-    TestFrag, TestNav, TestIndexBin, TestInitFrag, TestInitMemory, TestSplitFrag, NULL,
+    TestFrag,       TestNav,       TestIndexBin, TestInitFrag,
+    TestInitMemory, TestSplitFrag, NULL,
 };
 
 int main(void) {
