@@ -1,6 +1,6 @@
 //
-#include "../AllocManager.h"
-#include "../AllocManagerImpl.h"
+#include "AllocManager.h"
+#include "AllocManagerImpl.h"
 
 #include <assert.h>
 
