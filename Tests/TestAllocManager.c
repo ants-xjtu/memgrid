@@ -98,8 +98,13 @@ void TestMergeFrag() {
 typedef void (*TestFunc)();
 
 const TestFunc TESTCASES[] = {
-    TestFrag,       TestNav,       TestIndexBin, TestInitFrag,
-    TestInitMemory, TestSplitFrag, NULL,
+  TestFrag,
+  TestNav,
+  TestIndexBin,
+  TestInitFrag,
+  TestInitMemory,
+  TestSplitFrag,
+  NULL,
 };
 
 int main(void) {

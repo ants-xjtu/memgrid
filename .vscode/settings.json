@@ -1,3 +1,3 @@
 {
-    "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Mozilla, AlignAfterOpenBracket: AlwaysBreak }"
+    "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: LLVM, ContinuationIndentWidth: 2, AlignAfterOpenBracket: AlwaysBreak, BinPackArguments: false }"
 }
