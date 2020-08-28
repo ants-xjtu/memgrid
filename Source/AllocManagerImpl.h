@@ -61,6 +61,7 @@ static _Frag *_GetLowerNeighbour(_Frag *frag) {
 static _Frag *
 _InitFrag(Memory addr, Size size, int used, _Frag *prev, _Frag *next) {
   _FragInfo info;
+  _SetFree(&info);
   _SetSize(&info, size);
   if (used) {
     _SetInUse(&info);

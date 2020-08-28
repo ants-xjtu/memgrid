@@ -83,6 +83,9 @@ void TestSplitFrag() {
   assert(_GetSize(next->posttag) == 16);
   assert(_GetHigherNeighbour(frag) == next);
   assert(_GetLowerNeighbour(next) == frag);
+  _Frag *nextNext = _GetHigherNeighbour(next);
+  assert(_GetLowerNeighbour(nextNext) == next);
+  assert(!_InUse(nextNext->posttag));
 }
 
 void TestMergeFrag() {
