@@ -22,10 +22,11 @@
     requests via mmap.
 */
 
-#define NBINS              96
-#define NSMALLBINS         32
+// modified according to comment above
+#define NBINS             128
+#define NSMALLBINS         64
 #define SMALLBIN_WIDTH      8
-#define MIN_LARGE_SIZE    256
+#define MIN_LARGE_SIZE    512
 
 #define in_smallbin_range(sz)  \
   ((CHUNK_SIZE_T)(sz) < (CHUNK_SIZE_T)MIN_LARGE_SIZE)

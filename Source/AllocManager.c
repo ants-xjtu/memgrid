@@ -19,7 +19,7 @@ void InitMemory(Memory memory, Size size) {
     _InitFrag((Memory)&mem->first_frag, totalAvailable, 0, NULL, NULL);
   _SetInUse(&frag->posttag);
   mem->bins[_IndexBin(totalAvailable)] = frag;
-  _SetInUse(&_GetLargerNeighbour(frag)->pretag);
+  _SetInUse(&_GetHigherNeighbour(frag)->pretag);
 }
 
 Object AllocObject(Memory memory, Size size) {

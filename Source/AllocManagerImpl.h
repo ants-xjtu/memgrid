@@ -10,31 +10,33 @@
 #include "AllocManager.h"
 #include "BinIndex.h"
 
-// internal structs & helpers
-typedef uint32_t _UsedAndSize;
+typedef uint32_t _FragInfo;
 
-#define IN_USE_FLAG 0x80000000
+#define IN_USE_FLAG 0x00000001
 
-static int _InUse(_UsedAndSize uas) { return (uas & IN_USE_FLAG) != 0; }
+static int _InUse(_FragInfo info) { return (info & IN_USE_FLAG) != 0; }
 
-static void _SetInUse(_UsedAndSize *uas) { *uas |= IN_USE_FLAG; }
+static void _SetInUse(_FragInfo *info) { *info |= IN_USE_FLAG; }
 
-static void _SetFree(_UsedAndSize *uas) { *uas &= ~IN_USE_FLAG; }
+static void _SetFree(_FragInfo *info) { *info &= ~IN_USE_FLAG; }
 
-static Size _GetSize(_UsedAndSize uas) { return uas & ~IN_USE_FLAG; }
+// Frag size is always multiplier of 8, so the lowest 1 (3 actually) bit(s) are
+// always 0
+// not including overhead introduced by _Frag struct
+static Size _GetSize(_FragInfo info) { return info & ~IN_USE_FLAG; }
 
-static void _SetSize(_UsedAndSize *uas, Size size) {
-  assert(!_InUse(*uas));
+static void _SetSize(_FragInfo *info, Size size) {
+  assert(!_InUse(*info));
   assert((size & IN_USE_FLAG) == 0);
-  *uas = (*uas & IN_USE_FLAG) | size;
+  *info = (*info & IN_USE_FLAG) | size;
 }
 
 #undef IN_USE_FLAG
 
 typedef struct _tagFrag {
-  // posttag for smaller neighbour
-  _UsedAndSize posttag;
-  _UsedAndSize pretag;
+  // posttag for lower neighbour
+  _FragInfo posttag;
+  _FragInfo pretag;
   // previous & next fragments in the same bin
   struct _tagFrag *prev;
   struct _tagFrag *next;
@@ -44,36 +46,37 @@ static Object _GetObject(_Frag *frag) {
   return (Object)((Memory)frag + sizeof(_Frag));
 }
 
-// larger neighbour fragment has larger address than current one
-// use 'larger' and 'small' to distinguish with frag->prev/next
-static _Frag *_GetLargerNeighbour(_Frag *frag) {
+// Higher neighbour fragment has higher address than current one
+// use 'high' and 'low' to distinguish with frag->prev/next
+static _Frag *_GetHigherNeighbour(_Frag *frag) {
   Size offset = sizeof(_Frag) + _GetSize(frag->pretag);
   return (_Frag *)((Memory)frag + offset);
 }
 
-static _Frag *_GetSmallerNeighbour(_Frag *frag) {
+static _Frag *_GetLowerNeighbour(_Frag *frag) {
   Size offset = sizeof(_Frag) + _GetSize(frag->posttag);
   return (_Frag *)((Memory)frag - offset);
 }
 
 static _Frag *
 _InitFrag(Memory addr, Size size, int used, _Frag *prev, _Frag *next) {
-  _UsedAndSize uas;
-  _SetSize(&uas, size);
+  _FragInfo info;
+  _SetSize(&info, size);
   if (used) {
-    _SetInUse(&uas);
+    _SetInUse(&info);
   } else {
-    _SetFree(&uas);
+    _SetFree(&info);
   }
 
   _Frag *frag = (_Frag *)addr;
-  frag->pretag = uas;
-  _GetLargerNeighbour(frag)->posttag = uas;
+  frag->pretag = info;
+  _GetHigherNeighbour(frag)->posttag = info;
   frag->prev = prev;
   frag->next = next;
   return frag;
 }
 
+// return the second frag
 static _Frag *_SplitFrag(_Frag *frag, Size pos) {
   assert(!_InUse(frag->pretag));
   assert(_GetSize(frag->pretag) > pos);
@@ -84,13 +87,14 @@ static _Frag *_SplitFrag(_Frag *frag, Size pos) {
   Size nextSize = _GetSize(frag->pretag) - pos;
 
   _SetSize(&frag->pretag, pos);
-  _Frag *next = _GetLargerNeighbour(frag);
-  _UsedAndSize nextUAS;
-  _SetFree(&nextUAS);
-  _SetSize(&nextUAS, nextSize);
-  next->pretag = nextUAS;
-  next->posttag = frag->pretag;
-  return next;
+  _Frag *remain = _GetHigherNeighbour(frag);
+  _FragInfo remainTag;
+  _SetFree(&remainTag);
+  _SetSize(&remainTag, nextSize);
+  remain->pretag = remainTag;
+  _GetHigherNeighbour(remain)->posttag = remainTag;
+  remain->posttag = frag->pretag;
+  return remain;
 }
 
 static _Frag *_MergeFrag(_Frag *frag) {
@@ -98,17 +102,17 @@ static _Frag *_MergeFrag(_Frag *frag) {
   Size sum = _GetSize(frag->pretag);
   _Frag *start = frag;
   while (!_InUse(start->posttag)) {
-    start = _GetSmallerNeighbour(start);
+    start = _GetLowerNeighbour(start);
     sum += _GetSize(start->pretag) + sizeof(_Frag);
   }
   _SetSize(&start->pretag, sum);
-  while (!_InUse(_GetLargerNeighbour(start)->pretag)) {
+  while (!_InUse(_GetHigherNeighbour(start)->pretag)) {
     _SetSize(
       &start->pretag,
-      _GetSize(start->pretag) + _GetSize(_GetLargerNeighbour(start)->pretag) +
+      _GetSize(start->pretag) + _GetSize(_GetHigherNeighbour(start)->pretag) +
         sizeof(_Frag));
   }
-  _GetLargerNeighbour(start)->posttag = start->pretag;
+  _GetHigherNeighbour(start)->posttag = start->pretag;
   return start;
 }
 
@@ -120,26 +124,5 @@ typedef struct _tagMemoryImpl {
 } _MemoryImpl;
 
 static unsigned int _IndexBin(Size size) { return bin_index(size); }
-
-static void _RemoveFrag(_Frag *frag, _MemoryImpl *mem) {
-  if (frag->prev == NULL) {
-    assert(_IndexBin(_GetSize(frag->pretag)) == mem->binLeft);
-    assert(frag->next != NULL);
-    frag->next->prev = NULL;
-    mem->binLeft = _IndexBin(_GetSize(frag->next->pretag));
-  } else {
-    frag->next->prev = frag->prev;
-  }
-  if (frag->next == NULL) {
-    assert(frag == mem->last);
-    assert(_IndexBin(_GetSize(frag->pretag)) + 1 == mem->binRight);
-    assert(frag->prev != NULL);
-    frag->prev->next = NULL;
-    mem->binRight = _IndexBin(_GetSize(frag->prev->pretag));
-    mem->last = frag->prev;
-  } else {
-    frag->prev->next = frag->next;
-  }
-}
 
 #endif

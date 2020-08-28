@@ -34,8 +34,8 @@ void TestNav() {
   _SetFree(&layout.frag3.posttag);
   _SetSize(&layout.frag3.posttag, 32);
   _Frag *current = &layout.frag2;
-  assert(_GetSmallerNeighbour(current) == &layout.frag1);
-  assert(_GetLargerNeighbour(current) == &layout.frag3);
+  assert(_GetLowerNeighbour(current) == &layout.frag1);
+  assert(_GetHigherNeighbour(current) == &layout.frag3);
 }
 
 void TestIndexBin() {
@@ -53,8 +53,8 @@ void TestInitFrag() {
   _Frag *frag = _InitFrag(mem, 32, 0, NULL, NULL);
   assert(!_InUse(frag->pretag));
   assert(_GetSize(frag->pretag) == 32);
-  _Frag *next_frag = _GetLargerNeighbour(frag);
-  assert(_GetSmallerNeighbour(next_frag) == frag);
+  _Frag *next_frag = _GetHigherNeighbour(frag);
+  assert(_GetLowerNeighbour(next_frag) == frag);
   assert(!_InUse(next_frag->posttag));
   assert(_GetSize(next_frag->posttag) == 32);
 }
@@ -66,7 +66,7 @@ void TestInitMemory() {
   Size totalSize = _GetSize(memimpl->first_frag.pretag);
   assert(totalSize > 0);
   assert(totalSize < 4096);
-  _Frag *guard = _GetLargerNeighbour(&memimpl->first_frag);
+  _Frag *guard = _GetHigherNeighbour(&memimpl->first_frag);
   assert((Memory)guard < &mem[4095]);
   for (int i = 0; i < 128; i += 1) {
     assert((memimpl->bins[i] != NULL) == (i == _IndexBin(totalSize)));
@@ -81,8 +81,8 @@ void TestSplitFrag() {
   assert(_GetSize(frag->pretag) == 16);
   assert(_GetSize(next->pretag) != 0);
   assert(_GetSize(next->posttag) == 16);
-  assert(_GetLargerNeighbour(frag) == next);
-  assert(_GetSmallerNeighbour(next) == frag);
+  assert(_GetHigherNeighbour(frag) == next);
+  assert(_GetLowerNeighbour(next) == frag);
 }
 
 void TestMergeFrag() {
