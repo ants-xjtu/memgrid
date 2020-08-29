@@ -119,11 +119,93 @@ static _Frag *_MergeFrag(_Frag *frag) {
 
 typedef struct _tagMemoryImpl {
   _Frag *bins[128];
-  _Frag *last;
-  uint8_t binLeft, binRight;
+  _Frag *head, *last;
   _Frag first_frag;
 } _MemoryImpl;
 
 static unsigned int _IndexBin(Size size) { return bin_index(size); }
+
+static _Frag *_FindSmallestFrag(_MemoryImpl *mem, Size size) {
+  unsigned int index;
+  for (index = _IndexBin(size); index < NBINS && mem->bins[index] == NULL;
+       index += 1) {
+  }
+  if (index == NBINS) {
+    return NULL;
+  }
+  _Frag *current;
+  for (current = mem->bins[index];
+       current != NULL && _GetSize(current->pretag) < size;
+       current = current->next) {
+  }
+  return current;
+}
+
+static void _AdjustBins(_MemoryImpl *mem, _Frag *frag) {
+  unsigned int index = _IndexBin(_GetSize(frag->pretag));
+  if (_InUse(frag->pretag) && mem->bins[index] == frag) {
+    mem->bins[index] =
+      _IndexBin(_GetSize(frag->next->pretag)) == index ? frag->next : NULL;
+  }
+  // compare size with less or equal operator
+  // because we always insert fragment in front of all other fragment with same
+  // size
+  if (
+    !_InUse(frag->pretag) &&
+    _GetSize(frag->pretag) <= _GetSize(mem->bins[index]->pretag)) {
+    mem->bins[index] = frag;
+  }
+}
+
+static void _RemoveFrag(_MemoryImpl *mem, _Frag *frag) {
+  if (frag == mem->head) {
+    if (frag == mem->last) {
+      mem->head = mem->last = NULL;
+    } else {
+      assert(frag->next != NULL);
+      mem->head = frag->next;
+      frag->next->prev = NULL;
+    }
+  } else if (frag == mem->last) {
+    assert(frag->prev != NULL);
+    mem->last = frag->prev;
+    frag->prev->next = NULL;
+  } else {
+    frag->prev->next = frag->next;
+    frag->next->prev = frag->prev;
+  }
+  assert(_InUse(frag->pretag));
+  _AdjustBins(mem, frag);
+}
+
+static void _InsertFrag(_MemoryImpl *mem, _Frag *frag) {
+  if (mem->head == NULL) {
+    assert(mem->last == NULL);
+    mem->head = mem->last = frag;
+  } else {
+    Size size = _GetSize(frag->pretag);
+    if (size <= _GetSize(mem->head->pretag)) {
+      mem->head->prev = frag;
+      frag->next = mem->head;
+      frag->prev = NULL;
+      mem->head = frag;
+    } else if (size > _GetSize(mem->last->pretag)) {
+      mem->last->next = frag;
+      frag->prev = mem->last;
+      frag->next = NULL;
+      mem->last = frag;
+    } else {
+      _Frag *followed = _FindSmallestFrag(mem, size);
+      assert(followed != NULL);
+      assert(followed->prev != NULL);
+      frag->prev = followed->prev;
+      frag->next = followed;
+      followed->prev->next = frag;
+      followed->prev = frag;
+    }
+  }
+  assert(!_InUse(frag->pretag));
+  _AdjustBins(mem, frag);
+}
 
 #endif

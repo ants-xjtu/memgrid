@@ -24,23 +24,18 @@ void InitMemory(Memory memory, Size size) {
 
 Object AllocObject(Memory memory, Size size) {
   _MemoryImpl *mem = (_MemoryImpl *)memory;
-  for (unsigned int index = _IndexBin(size); index < 128; index += 1) {
-    if (mem->bins[index] == NULL) {
-      continue;
-    }
-    _Frag *suitable = NULL;
-    for (_Frag *cursor = mem->bins[index]; cursor != NULL;
-         cursor = cursor->next) {
-      if (_GetSize(cursor->pretag) >= size) {
-        suitable = cursor;
-        break;
-      }
-    }
-    if (suitable == NULL) {
-      continue;
-    }
-
-    //
+  _Frag *frag = _FindSmallestFrag(mem, size);
+  if (frag == NULL) {
+    return NULL;
   }
-  return NULL;
+  _SetInUse(&frag->pretag);
+  _SetInUse(&_GetHigherNeighbour(frag)->posttag);
+  _RemoveFrag(mem, frag);
+  _Frag *remain = _GetSize(frag->pretag) > size ? _SplitFrag(frag, size) : NULL;
+  if (remain != NULL) {
+    _SetFree(&remain->pretag);
+    _SetFree(&_GetHigherNeighbour(remain)->posttag);
+    _InsertFrag(mem, remain);
+  }
+  return frag;
 }
