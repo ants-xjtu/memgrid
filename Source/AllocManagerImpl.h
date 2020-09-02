@@ -46,6 +46,10 @@ static Object _GetObject(_Frag *frag) {
   return (Object)((Memory)frag + sizeof(_Frag));
 }
 
+static _Frag *_GetFrag(Object object) {
+  return (_Frag *)((Memory)object - sizeof(_Frag));
+}
+
 // Higher neighbour fragment has higher address than current one
 // use 'high' and 'low' to distinguish with frag->prev/next
 static _Frag *_GetHigherNeighbour(_Frag *frag) {
@@ -141,18 +145,16 @@ static _Frag *_FindSmallestFrag(_MemoryImpl *mem, Size size) {
   return current;
 }
 
-static void _AdjustBins(_MemoryImpl *mem, _Frag *frag) {
+static void _AdjustBins(_MemoryImpl *mem, _Frag *frag, int is_free) {
   unsigned int index = _IndexBin(_GetSize(frag->pretag));
-  if (_InUse(frag->pretag) && mem->bins[index] == frag) {
+  if (!is_free && mem->bins[index] == frag) {
     mem->bins[index] =
       _IndexBin(_GetSize(frag->next->pretag)) == index ? frag->next : NULL;
   }
   // compare size with less or equal operator
   // because we always insert fragment in front of all other fragment with same
   // size
-  if (
-    !_InUse(frag->pretag) &&
-    _GetSize(frag->pretag) <= _GetSize(mem->bins[index]->pretag)) {
+  if (is_free && _GetSize(frag->pretag) <= _GetSize(mem->bins[index]->pretag)) {
     mem->bins[index] = frag;
   }
 }
@@ -174,8 +176,7 @@ static void _RemoveFrag(_MemoryImpl *mem, _Frag *frag) {
     frag->prev->next = frag->next;
     frag->next->prev = frag->prev;
   }
-  assert(_InUse(frag->pretag));
-  _AdjustBins(mem, frag);
+  _AdjustBins(mem, frag, 0);
 }
 
 static void _InsertFrag(_MemoryImpl *mem, _Frag *frag) {
@@ -204,8 +205,7 @@ static void _InsertFrag(_MemoryImpl *mem, _Frag *frag) {
       followed->prev = frag;
     }
   }
-  assert(!_InUse(frag->pretag));
-  _AdjustBins(mem, frag);
+  _AdjustBins(mem, frag, 1);
 }
 
 #endif
